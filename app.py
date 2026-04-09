@@ -59,11 +59,11 @@ AWARENESS_POINTS = [
 ]
 
 FOOD_FOR_THOUGHT = [
-    "If your organization tracked stress like a business KPI, what would changeMH",
-    "How do socioeconomic factors amplify mental health inequitiesMH",
-    "What would prevention-first mental healthcare look like in schoolsMH",
-    "Can digital tools improve access without reducing human connectionMH",
-    "How can workplaces make mental wellbeing measurable and actionableMH",
+    "If your organization tracked stress like a business KPI, what would change",
+    "How do socioeconomic factors amplify mental health inequities",
+    "What would prevention-first mental healthcare look like in schools",
+    "Can digital tools improve access without reducing human connection",
+    "How can workplaces make mental wellbeing measurable and actionable",
 ]
 
 DEFAULT_THEME = {
@@ -583,28 +583,28 @@ def render_stress_calculator(theme: dict[str, str]) -> None:
 
     with c1:
         stress_level_label = st.select_slider(
-            "How stressed have you felt over the last 7 daysMH",
+            "How stressed have you felt over the last 7 days",
             options=points,
             value="average",
         )
         sleep_quality_label = st.select_slider(
-            "How would you rate your sleep quality this weekMH",
+            "How would you rate your sleep quality this week",
             options=points,
             value="better",
         )
         energy_level_label = st.select_slider(
-            "How steady has your energy been this weekMH",
+            "How steady has your energy been this week",
             options=points,
             value="better",
         )
     with c2:
         mood_level_label = st.select_slider(
-            "How stable has your mood been this weekMH",
+            "How stable has your mood been this week",
             options=points,
             value="better",
         )
         workload_pressure_label = st.select_slider(
-            "How heavy has your work or study pressure feltMH",
+            "How heavy has your work or study pressure felt",
             options=points,
             value="average",
         )
@@ -711,6 +711,61 @@ def build_ts_forecast(country_df: pd.DataFrame, metric: str, horizon: int) -> pd
     return pd.DataFrame({"Year": years, f"{metric}_ts_forecast": forecast})
 
 
+def render_export_reports(
+    report_df: pd.DataFrame,
+    selected_country: str,
+    selected_metric: str,
+    year_range,
+    key_prefix: str,
+):
+    st.divider()
+    st.subheader("Export Reports")
+
+    csv_bytes = report_df.to_csv(index=False).encode("utf-8")
+    excel_bytes = to_excel_bytes(report_df)
+    pdf_bytes = to_pdf_bytes(
+        title="Mental Health Report",
+        summary_rows=[
+            ("Country", selected_country),
+            ("Metric", selected_metric),
+            ("Year range", f"{year_range[0]} - {year_range[1]}"),
+            ("Rows", str(len(report_df))),
+        ],
+        table_df=report_df,
+    )
+    jpeg_bytes = chart_jpeg_bytes(report_df, selected_country, selected_metric, DEFAULT_THEME["accent"])
+
+    e1, e2, e3, e4 = st.columns(4)
+    e1.download_button(
+        "Download CSV",
+        data=csv_bytes,
+        file_name=f"{selected_country}_{selected_metric}_report.csv",
+        mime="text/csv",
+        key=f"{key_prefix}_csv",
+    )
+    e2.download_button(
+        "Download Excel",
+        data=excel_bytes,
+        file_name=f"{selected_country}_{selected_metric}_report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key=f"{key_prefix}_excel",
+    )
+    e3.download_button(
+        "Download PDF",
+        data=pdf_bytes,
+        file_name=f"{selected_country}_{selected_metric}_report.pdf",
+        mime="application/pdf",
+        key=f"{key_prefix}_pdf",
+    )
+    e4.download_button(
+        "Download image.jpeg",
+        data=jpeg_bytes,
+        file_name="image.jpeg",
+        mime="image/jpeg",
+        key=f"{key_prefix}_img",
+    )
+
+
 def main() -> None:
     st.set_page_config(page_title="Mental Health Prevalence", layout="wide")
 
@@ -722,7 +777,7 @@ def main() -> None:
     apply_theme(DEFAULT_THEME)
     logo_b64 = load_logo_base64()
     logo_html = (
-        f'<img src="data:image/png;base64,{logo_b64}" alt="Logo" />' if logo_b64 else "MH"
+        f'<img src="data:image/png;base64,{logo_b64}" alt="Logo" />' if logo_b64 else "Logo"
     )
     illustration_b64 = load_illustration_base64()
     illustration_html = (
@@ -946,9 +1001,10 @@ def main() -> None:
 
         st.subheader("Cleaned data preview")
         st.dataframe(filtered, use_container_width=True)
+        render_export_reports(filtered, selected_country, selected_metric, year_range, "tab_dashboard")
 
     with tab3:
-        st.subheader("Prediction")
+        st.subheader("Linear Regression Prediction")
         horizon = horizon_years
         st.caption(f"Forecasting through {forecast_end_year}.")
 
@@ -965,6 +1021,7 @@ def main() -> None:
         fig_pred = style_figure(fig_pred, DEFAULT_THEME)
         st.plotly_chart(fig_pred, use_container_width=True)
         st.dataframe(pred_df, use_container_width=True)
+        render_export_reports(filtered, selected_country, selected_metric, year_range, "tab_prediction")
 
     with tab4:
         st.subheader("Time Series Analysis")
@@ -993,6 +1050,7 @@ def main() -> None:
 
         st.subheader("Year-over-year change (%)")
         st.dataframe(filtered[["Year", selected_metric, "yoy_change_pct"]], use_container_width=True)
+        render_export_reports(filtered, selected_country, selected_metric, year_range, "tab_timeseries")
 
     with tab5:
         st.subheader("News")
@@ -1007,9 +1065,11 @@ def main() -> None:
         st.info(random.choice(FOOD_FOR_THOUGHT))
         if st.button("New thought"):
             st.success(random.choice(FOOD_FOR_THOUGHT))
+        render_export_reports(filtered, selected_country, selected_metric, year_range, "tab_insights")
 
     with tab6:
         render_stress_calculator(DEFAULT_THEME)
+        render_export_reports(filtered, selected_country, selected_metric, year_range, "tab_stress")
 
     with tab7:
         st.subheader("Help & Guidance")
@@ -1019,7 +1079,7 @@ def main() -> None:
                 <h3>How to use this portal</h3>
                 <p><strong>Home:</strong> Overview and quick actions.</p>
                 <p><strong>Dashboard:</strong> Explore prevalence trends and compositions.</p>
-                <p><strong>Prediction:</strong> Forecast by selected metric.</p>
+                <p><strong>Prediction:</strong> Linear forecast by selected metric.</p>
                 <p><strong>Time Series:</strong> Rolling averages and change rates.</p>
                 <p><strong>Stress Calculator:</strong> Personal check-in with suggestions.</p>
             </div>
@@ -1037,51 +1097,6 @@ def main() -> None:
             """,
             unsafe_allow_html=True,
         )
-
-    st.divider()
-    st.subheader("Export Reports")
-
-    report_df = filtered.copy()
-    csv_bytes = report_df.to_csv(index=False).encode("utf-8")
-    excel_bytes = to_excel_bytes(report_df)
-    pdf_bytes = to_pdf_bytes(
-        title="Mental Health Report",
-        summary_rows=[
-            ("Country", selected_country),
-            ("Metric", selected_metric),
-            ("Year range", f"{year_range[0]} - {year_range[1]}"),
-            ("Rows", str(len(report_df))),
-        ],
-        table_df=report_df,
-    )
-    jpeg_bytes = chart_jpeg_bytes(df, selected_country, selected_metric, DEFAULT_THEME["accent"])
-
-    e1, e2, e3, e4 = st.columns(4)
-    e1.download_button(
-        "Download CSV",
-        data=csv_bytes,
-        file_name=f"{selected_country}_{selected_metric}_report.csv",
-        mime="text/csv",
-    )
-    e2.download_button(
-        "Download Excel",
-        data=excel_bytes,
-        file_name=f"{selected_country}_{selected_metric}_report.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-    e3.download_button(
-        "Download PDF",
-        data=pdf_bytes,
-        file_name=f"{selected_country}_{selected_metric}_report.pdf",
-        mime="application/pdf",
-    )
-    e4.download_button(
-        "Download image.jpeg",
-        data=jpeg_bytes,
-        file_name="image.jpeg",
-        mime="image/jpeg",
-    )
-
 
 if __name__ == "__main__":
     main()
